@@ -75,7 +75,7 @@
              margin-bottom: 10px;
         }
         .details-content {
-            margin-left: 20px;
+            margin-left: 20px; /* Corresponds roughly to marker width */
             color: #555;
             padding-top: 5px;
             border-top: 1px dashed #eee; /* Separator */
@@ -132,49 +132,7 @@
     const inputDataEl = document.getElementById('inputData');
     const outputContainerEl = document.getElementById('outputContainer');
 
-    function processInput() {
-        const inputText = inputDataEl.value; // No trim here, process line by line
-        const lines = inputText.split('\n');
-        let outputHtml = '';
-        let hasValidEntries = false;
-
-        lines.forEach((line, index) => {
-            const trimmedLine = line.trim();
-            if (!trimmedLine) return; // Skip empty lines effectively
-
-            const parts = trimmedLine.split('|');
-
-            if (parts.length === 2) {
-                const word = parts[0].trim();
-                const translation = parts[1].trim();
-
-                if (word) { // Ensure the main word part is not empty
-                   outputHtml += `
-                    <details>
-                        <summary>${escapeHtml(word)}</summary>
-                        <div class="details-content">
-                           ${escapeHtml(translation) || '(No translation provided)'}
-                        </div>
-                    </details>`;
-                   hasValidEntries = true;
-                } else {
-                     outputHtml += `<p class="error">Skipped line ${index + 1}: Word part is empty.</p>`;
-                }
-            } else if (trimmedLine) { // Only show error if the line wasn't just whitespace
-                outputHtml += `<p class="error">Skipped line ${index + 1}: Incorrect format (expected 'Word | Translation'). Found ${parts.length} part(s).</p>`;
-            }
-        });
-
-        if (outputHtml) {
-            outputContainerEl.innerHTML = outputHtml;
-        } else if (!inputText.trim()) {
-             outputContainerEl.innerHTML = '<p class="placeholder-text">Exercises will appear here as you type...</p>';
-        } else {
-            // Input text exists but resulted in no valid output (e.g., only invalid lines)
-            outputContainerEl.innerHTML = '<p class="placeholder-text">No valid entries found. Check format: Word | Translation</p>';
-        }
-    }
-
+    // Function to escape HTML special characters
     function escapeHtml(unsafe) {
         if (unsafe === null || unsafe === undefined) return '';
         return unsafe
@@ -186,10 +144,63 @@
              .replace(/'/g, "'");
     }
 
-    // Add event listener for real-time updates
+    // Function to process the input and update the output
+    function processInput() {
+        const inputText = inputDataEl.value; // Read the current value
+        const lines = inputText.split('\n');
+        let outputHtml = '';
+        let hasContent = false; // Flag to track if any output was generated
+
+        lines.forEach((line, index) => {
+            const trimmedLine = line.trim();
+            if (!trimmedLine) {
+                // Skip empty lines silently
+                return;
+            }
+
+            const parts = trimmedLine.split('|');
+
+            if (parts.length === 2) {
+                const word = parts[0].trim();
+                const translation = parts[1].trim();
+
+                if (word) { // Ensure the main word part is not empty
+                   const escapedWord = escapeHtml(word);
+                   const escapedTranslation = escapeHtml(translation) || '(No translation provided)'; // Handle empty translation
+
+                   outputHtml += `
+                    <details>
+                        <summary>${escapedWord}</summary>
+                        <div class="details-content">
+                           ${escapedTranslation}
+                        </div>
+                    </details>`;
+                   hasContent = true; // Mark that we generated valid output
+                } else {
+                     // Word part was empty after trimming
+                     outputHtml += `<p class="error">Skipped line ${index + 1}: Word part is empty.</p>`;
+                     hasContent = true; // Still counts as content (an error message)
+                }
+            } else {
+                // Incorrect number of parts on a non-empty line
+                outputHtml += `<p class="error">Skipped line ${index + 1}: Incorrect format (expected 'Word | Translation'). Found ${parts.length} part(s).</p>`;
+                hasContent = true; // Still counts as content (an error message)
+            }
+        }); // End of forEach loop
+
+        // Update the output container based on what was generated
+        if (hasContent) {
+            outputContainerEl.innerHTML = outputHtml;
+        } else {
+            // No lines processed (input might be empty or just whitespace)
+            outputContainerEl.innerHTML = '<p class="placeholder-text">Exercises will appear here as you type...</p>';
+        }
+    }
+
+    // Attach the event listener to the textarea for the 'input' event
     inputDataEl.addEventListener('input', processInput);
 
-    // Optional: Process any initial content (e.g., if browser restores textarea)
+    // Run the process function once on page load to handle any pre-filled textarea content (e.g., from browser cache)
     processInput();
 
 </script>
